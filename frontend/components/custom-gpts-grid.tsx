@@ -1,5 +1,5 @@
 "use client"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Plus, MoreVertical, Eye, Code, Edit, Trash2, Share2, Bot } from "lucide-react"
@@ -8,13 +8,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/empty-state"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
+import { ApiStatus } from "@/components/api-status"
+import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal"
 
 // Data is loaded from store
 
 export function CustomGPTsGrid() {
   const router = useRouter()
-  const { customGPTs, addCustomGPT, deleteCustomGPT, agents } = useData()
+  const { customGPTs, deleteCustomGPT, agents, loading, errors, refreshCustomGPTs } = useData()
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [gptToDelete, setGptToDelete] = useState<{ id: string; name: string } | null>(null)
+  
   const rows = useMemo(() => {
     return customGPTs.map((g) => {
       const agent = agents.find((a) => a.id === g.agentId)
@@ -35,8 +40,14 @@ export function CustomGPTsGrid() {
   }
 
   const handleDeleteGPT = (gpt: { id: string; name: string }) => {
-    if (confirm(`Are you sure you want to delete "${gpt.name}"?`)) {
-      deleteCustomGPT(gpt.id)
+    setGptToDelete(gpt)
+    setShowDeleteModal(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (gptToDelete) {
+      await deleteCustomGPT(gptToDelete.id)
+      setGptToDelete(null)
     }
   }
 
@@ -55,8 +66,18 @@ export function CustomGPTsGrid() {
         </Button>
       </div>
 
+      {/* API Status */}
+      <ApiStatus 
+        loading={loading.customGPTs} 
+        error={errors.customGPTs} 
+        onRetry={refreshCustomGPTs}
+        className="mb-4"
+      />
+
       {/* Custom GPTs table or empty state */}
-      {rows.length > 0 ? (
+      {!loading.customGPTs && !errors.customGPTs && (
+        <>
+          {rows.length > 0 ? (
         <div className="bg-card rounded-lg border">
           <Table>
             <TableHeader>
@@ -188,7 +209,23 @@ export function CustomGPTsGrid() {
             </div>
           </div>
         </EmptyState>
+          )}
+        </>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false)
+          setGptToDelete(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Custom GPT"
+        description="Are you sure you want to delete this Custom GPT? This action cannot be undone and will remove all associated data including chat history."
+        itemName={gptToDelete?.name || ""}
+        itemType="custom GPT"
+      />
     </div>
   )
 }

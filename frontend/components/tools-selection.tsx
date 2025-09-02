@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { EmptyState } from "@/components/empty-state"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { 
   Wrench, 
   Code,

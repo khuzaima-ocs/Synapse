@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AddApiKeyModal } from "@/components/add-api-key-modal"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { useRouter } from "next/navigation"
 import { Bot, Key, Plus, Sparkles, ArrowRight, Zap } from "lucide-react"
 

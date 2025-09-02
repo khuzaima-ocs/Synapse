@@ -2,12 +2,16 @@
 
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Info, Palette } from "lucide-react"
 
 interface CustomGPTAppearanceFormProps {
   formData: {
     themeColor: string
+    customBackground?: boolean
+    chatPersistence?: string
   }
   onChange: (field: string, value: any) => void
 }
@@ -99,6 +103,48 @@ export function CustomGPTAppearanceForm({ formData, onChange }: CustomGPTAppeara
                   </ul>
                 </div>
               </div>
+            </div>
+
+            {/* Custom Background Toggle */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium">Custom Background</Label>
+                <p className="text-xs text-muted-foreground">Enable custom background styling</p>
+              </div>
+              <Switch 
+                checked={formData.customBackground ?? false} 
+                onCheckedChange={(checked) => onChange("customBackground", checked)} 
+              />
+            </div>
+
+            {/* Chat Persistence */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                Chat Persistence
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>How long should chat history be retained?</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
+              <Select 
+                value={formData.chatPersistence || "Never Forget"} 
+                onValueChange={(value) => onChange("chatPersistence", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select persistence setting" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Never Forget">Never Forget</SelectItem>
+                  <SelectItem value="1 Day">1 Day</SelectItem>
+                  <SelectItem value="1 Week">1 Week</SelectItem>
+                  <SelectItem value="1 Month">1 Month</SelectItem>
+                  <SelectItem value="Session Only">Session Only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>

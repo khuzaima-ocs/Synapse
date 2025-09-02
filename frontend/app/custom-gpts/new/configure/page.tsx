@@ -9,7 +9,7 @@ import { CustomGPTPreview } from "@/components/custom-gpt-preview"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings, Palette, Eye, Share } from "lucide-react"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { useRouter } from "next/navigation"
 
 export default function NewCustomGPTPage() {
@@ -28,6 +28,8 @@ export default function NewCustomGPTPage() {
     inputPlaceholder: "What would you like to know?",
     chatHistory: true,
     conversationStarters: [] as string[],
+    customBackground: false,
+    chatPersistence: "Never Forget",
   })
 
   const handleInputChange = (field: string, value: any) => {

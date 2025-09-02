@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { Key, Eye, EyeOff, ExternalLink, Shield, CheckCircle, AlertCircle, Cloud } from "lucide-react"
 
 interface AddApiKeyModalProps {

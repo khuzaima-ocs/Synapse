@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Info, Settings, Plus, X } from "lucide-react"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 
 interface CustomGPTGeneralFormProps {
   formData: {

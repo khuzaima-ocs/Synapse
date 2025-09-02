@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import { Upload, ChevronLeft, ChevronRight, Edit, Minus, Info, Bot, Zap, Settings, Palette, Brain, MessageCircle, Sliders, Upload as UploadIcon, User, FileText, Wrench } from "lucide-react"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ToolsSelection } from "./tools-selection"
 

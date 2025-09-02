@@ -7,13 +7,14 @@ import { Plus, Wrench } from "lucide-react"
 import { ToolCard } from "./tool-card"
 import { EmptyState } from "@/components/empty-state"
 import { useRouter } from "next/navigation"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
+import { ApiStatus } from "@/components/api-status"
 
 // Data is loaded from store
 
 export function ToolsGrid() {
   const [sortBy, setSortBy] = useState("latest")
-  const { tools } = useData()
+  const { tools, loading, errors, refreshTools } = useData()
   const router = useRouter()
 
   console.log(tools)
@@ -62,41 +63,53 @@ export function ToolsGrid() {
         </div>
       )}
 
+      {/* API Status */}
+      <ApiStatus 
+        loading={loading.tools} 
+        error={errors.tools} 
+        onRetry={refreshTools}
+        className="mb-4"
+      />
+
       {/* Tools Grid or empty state */}
-      {sorted.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-          {sorted.map((tool) => (
-            <ToolCard key={tool.id} tool={tool} />
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={Wrench}
-          title="No tools yet"
-          description="Tools are specific actions that your agents can take, like updating lead info or fetching data from a database. Build your first tool to get started."
-          actionLabel="Create Your First Tool"
-          onAction={() => router.push('/tools/new/edit')}
-        >
-          <div className="flex flex-col items-center gap-3 mt-4">
-            <div className="text-sm text-muted-foreground">
-              Need inspiration? Check out these examples:
+      {!loading.tools && !errors.tools && (
+        <>
+          {sorted.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+              {sorted.map((tool) => (
+                <ToolCard key={tool.id} tool={tool} />
+              ))}
             </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
-                🔍 Web Search
+          ) : (
+            <EmptyState
+              icon={Wrench}
+              title="No tools yet"
+              description="Tools are specific actions that your agents can take, like updating lead info or fetching data from a database. Build your first tool to get started."
+              actionLabel="Create Your First Tool"
+              onAction={() => router.push('/tools/new/edit')}
+            >
+              <div className="flex flex-col items-center gap-3 mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Need inspiration? Check out these examples:
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
+                    🔍 Web Search
+                  </div>
+                  <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
+                    📧 Send Email
+                  </div>
+                  <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
+                    🗄️ Database Query
+                  </div>
+                  <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
+                    📊 Generate Report
+                  </div>
+                </div>
               </div>
-              <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
-                📧 Send Email
-              </div>
-              <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
-                🗄️ Database Query
-              </div>
-              <div className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground">
-                📊 Generate Report
-              </div>
-            </div>
-          </div>
-        </EmptyState>
+            </EmptyState>
+          )}
+        </>
       )}
     </div>
   )

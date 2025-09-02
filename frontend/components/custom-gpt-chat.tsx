@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Paperclip, Mic, Send, Copy, MoreVertical, Plus, ChevronLeft, ChevronRight } from "lucide-react"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { Badge } from "@/components/ui/badge"
 
 export function CustomGPTChat({ gptId }: { gptId: string }) {

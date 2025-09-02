@@ -8,7 +8,8 @@ import { ImportAgentModal } from "@/components/import-agent-modal"
 import { EmptyState } from "@/components/empty-state"
 import { useRouter } from "next/navigation"
 import { useState, useMemo } from "react"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
+import { ApiStatus } from "@/components/api-status"
 
 // Data is loaded from the global store
 
@@ -16,7 +17,7 @@ export function AgentsGrid() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [sortBy, setSortBy] = useState("latest")
   const [apiKeyFilter, setApiKeyFilter] = useState("all")
-  const { agents, apiKeys } = useData()
+  const { agents, apiKeys, loading, errors, refreshAgents } = useData()
   const router = useRouter()
 
   const filteredAgents = useMemo(() => {
@@ -59,35 +60,47 @@ export function AgentsGrid() {
           </div>
         </div>
 
+        {/* API Status */}
+        <ApiStatus 
+          loading={loading.agents} 
+          error={errors.agents} 
+          onRetry={refreshAgents}
+          className="mb-4"
+        />
+
         {/* Agents grid or empty state */}
-        {filteredAgents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
-            {filteredAgents.map((agent) => (
-              <AgentCard key={agent.id} agent={agent} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={Users}
-            title="No agents yet"
-            description="Agents are central to the platform and can be created for different roles and tasks. Get started by creating your first agent."
-            actionLabel="Create Your First Agent"
-            onAction={() => setShowImportModal(true)}
-          >
-            <div className="flex flex-col items-center gap-3 mt-4">
-              <div className="text-sm text-muted-foreground">
-                or learn more about agents
+        {!loading.agents && !errors.agents && (
+          <>
+            {filteredAgents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+                {filteredAgents.map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} />
+                ))}
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="text-xs">
-                  View Documentation
-                </Button>
-                <Button variant="outline" size="sm" className="text-xs">
-                  Watch Tutorial
-                </Button>
-              </div>
-            </div>
-          </EmptyState>
+            ) : (
+              <EmptyState
+                icon={Users}
+                title="No agents yet"
+                description="Agents are central to the platform and can be created for different roles and tasks. Get started by creating your first agent."
+                actionLabel="Create Your First Agent"
+                onAction={() => setShowImportModal(true)}
+              >
+                <div className="flex flex-col items-center gap-3 mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    or learn more about agents
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="text-xs">
+                      View Documentation
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs">
+                      Watch Tutorial
+                    </Button>
+                  </div>
+                </div>
+              </EmptyState>
+            )}
+          </>
         )}
       </div>
 

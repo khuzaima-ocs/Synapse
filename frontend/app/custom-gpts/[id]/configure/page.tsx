@@ -9,7 +9,7 @@ import { CustomGPTPreview } from "@/components/custom-gpt-preview"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings, Palette, Eye, Share, AlertCircle, Home } from "lucide-react"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { useRouter } from "next/navigation"
 
 export default function ConfigureCustomGPTPage({ params }: { params: Promise<{ id: string }> }) {
@@ -30,6 +30,8 @@ export default function ConfigureCustomGPTPage({ params }: { params: Promise<{ i
     inputPlaceholder: "What would you like to know?",
     chatHistory: true,
     conversationStarters: [] as string[],
+    customBackground: false,
+    chatPersistence: "Never Forget",
   })
 
   useEffect(() => {
@@ -43,6 +45,8 @@ export default function ConfigureCustomGPTPage({ params }: { params: Promise<{ i
       inputPlaceholder: gpt.inputPlaceholder || "What would you like to know?",
       chatHistory: gpt.chatHistory ?? true,
       conversationStarters: gpt.conversationStarters || [],
+      customBackground: gpt.customBackground ?? false,
+      chatPersistence: gpt.chatPersistence || "Never Forget",
     })
   }, [gpt])
 

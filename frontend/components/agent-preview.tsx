@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Paperclip, Mic, Send, Copy, Sparkles, MessageSquare } from "lucide-react"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 
 export function AgentPreview({ agentId }: { agentId?: string }) {
   const [message, setMessage] = useState("")

@@ -9,7 +9,7 @@ import { HelpCircle, Upload, CheckCircle, AlertCircle, FileText } from "lucide-r
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { useData } from "@/lib/data-store"
+import { useData } from "@/lib/api-data-store"
 import { useRouter } from "next/navigation"
 import { validateSchemaJson, EXAMPLE_SCHEMAS } from "@/lib/schema-validation"
 import type { FunctionSchema } from "@/lib/types"
