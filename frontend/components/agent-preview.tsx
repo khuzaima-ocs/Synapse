@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Paperclip, Mic, Send, Copy, Sparkles, MessageSquare } from "lucide-react"
 import { useData } from "@/lib/api-data-store"
+import { apiClient } from "@/lib/api-client"
+import type { Message } from "@/lib/types"
 
 export function AgentPreview({ agentId }: { agentId?: string }) {
   const [message, setMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [messages, setMessages] = useState<Array<{
     id: string
     type: 'agent' | 'user'
@@ -22,19 +25,91 @@ export function AgentPreview({ agentId }: { agentId?: string }) {
   const { agents } = useData()
   const agent = useMemo(() => agents.find((a) => a.id === agentId), [agents, agentId])
 
-  // Initialize messages with agent's starter message when agent changes
-  useEffect(() => {
-    if (agent && messages.length === 0) {
-      const starterMessage = {
-        id: '1',
-        type: 'agent' as const,
-        content: agent.starterMessage || "Hi! I'm your AI assistant. How can I help you today?",
-        timestamp: new Date()
-      }
-      setMessages([starterMessage])
-      previousMessagesLengthRef.current = 1
+  // Convert API message to component message format
+  const convertApiMessage = (apiMessage: Message) => ({
+    id: apiMessage.id,
+    type: apiMessage.role === 'assistant' ? 'agent' as const : 'user' as const,
+    content: apiMessage.content,
+    timestamp: new Date(apiMessage.created_at),
+    toolUsed: apiMessage.tool_calls ? 'Tool' : undefined
+  })
+
+  // Format response with markdown support
+  const formatResponse = (responseText: string) => {
+    // Escape < and > to prevent XSS
+    let safeText = responseText
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Convert markdown-style bold **text** → <strong>text</strong>
+    safeText = safeText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Convert numbered lists (1. , 2. , etc.)
+    safeText = safeText.replace(/(\d+)\.\s+(.*?)(?=\n|$)/g, "<li>$2</li>");
+    if (safeText.includes("<li>")) {
+      safeText = "<ol>" + safeText + "</ol>";
     }
-  }, [agent, messages.length])
+
+    // Convert unordered lists (- , * )
+    safeText = safeText.replace(/[-*]\s+(.*?)(?=\n|$)/g, "<li>$1</li>");
+    if (safeText.includes("<li>") && !safeText.includes("<ol>")) {
+      safeText = "<ul>" + safeText + "</ul>";
+    }
+
+    // Convert newlines into paragraphs if not inside <li>
+    safeText = safeText.replace(/([^\n<>]+)\n/g, "<p>$1</p>");
+
+    return safeText;
+  }
+
+  // Fetch chat history when agent changes
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      if (!agent) return
+      
+      setIsLoadingHistory(true)
+      try {
+        // Use a default user ID for now - in a real app, this would come from authentication
+        const userId = "khuzaima" // This should be dynamic based on logged-in user
+        const chatHistory = await apiClient.getChatHistory(agent.id, userId, 50)
+        
+        if (chatHistory && chatHistory.length > 0) {
+          // Convert and sort messages by timestamp
+          const convertedMessages = chatHistory
+            .map(convertApiMessage)
+            .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+          
+          setMessages(convertedMessages)
+          previousMessagesLengthRef.current = convertedMessages.length
+        } else {
+          // No chat history, show starter message
+          const starterMessage = {
+            id: '1',
+            type: 'agent' as const,
+            content: agent.starterMessage || "Hi! I'm your AI assistant. How can I help you today?",
+            timestamp: new Date()
+          }
+          setMessages([starterMessage])
+          previousMessagesLengthRef.current = 1
+        }
+      } catch (error) {
+        console.error('Failed to fetch chat history:', error)
+        // Fallback to starter message on error
+        const starterMessage = {
+          id: '1',
+          type: 'agent' as const,
+          content: agent.starterMessage || "Hi! I'm your AI assistant. How can I help you today?",
+          timestamp: new Date()
+        }
+        setMessages([starterMessage])
+        previousMessagesLengthRef.current = 1
+      } finally {
+        setIsLoadingHistory(false)
+      }
+    }
+
+    fetchChatHistory()
+  }, [agent])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -93,8 +168,17 @@ export function AgentPreview({ agentId }: { agentId?: string }) {
     <div className="h-full flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
       <div className="flex-1 overflow-y-auto chat-scroll">
         <div className="p-6 space-y-6 min-h-full">
-          {/* Messages */}
-          {messages.map((msg, index) => (
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="text-2xl mb-2">⏳</div>
+                <p className="text-muted-foreground">Loading chat history...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Messages */}
+              {messages.map((msg, index) => (
             <div 
               key={msg.id} 
               className={isNewMessage(index) ? "animate-slide-in-from-bottom" : ""}
@@ -110,9 +194,16 @@ export function AgentPreview({ agentId }: { agentId?: string }) {
                   </Avatar>
                   <div className="flex-1 max-w-[80%] space-y-2">
                     <div className="message-bubble bg-gradient-to-br from-card via-card to-muted/20 border border-border/40 rounded-3xl rounded-tl-lg px-5 py-4 shadow-md backdrop-blur-sm">
-                      <p className="text-sm text-foreground leading-relaxed font-medium">
-                        {msg.content}
-                      </p>
+                      {msg.type === 'agent' ? (
+                        <div 
+                          className="text-sm text-foreground leading-relaxed font-medium"
+                          dangerouslySetInnerHTML={{ __html: formatResponse(msg.content) }}
+                        />
+                      ) : (
+                        <p className="text-sm text-foreground leading-relaxed font-medium">
+                          {msg.content}
+                        </p>
+                      )}
                       
                       {/* Tool Usage Indicator - Enhanced */}
                       {msg.toolUsed && (
@@ -172,6 +263,8 @@ export function AgentPreview({ agentId }: { agentId?: string }) {
           )}
           
           <div ref={messagesEndRef} />
+            </>
+          )}
         </div>
       </div>
 

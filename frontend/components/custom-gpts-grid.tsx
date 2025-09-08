@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/empty-state"
 import { useData } from "@/lib/api-data-store"
 import { ApiStatus } from "@/components/api-status"
 import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal"
+import { EmbedModal } from "@/components/embed-modal"
 
 // Data is loaded from store
 
@@ -19,6 +20,8 @@ export function CustomGPTsGrid() {
   const { customGPTs, deleteCustomGPT, agents, loading, errors, refreshCustomGPTs } = useData()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [gptToDelete, setGptToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [showEmbedModal, setShowEmbedModal] = useState(false)
+  const [gptToEmbed, setGptToEmbed] = useState<{ id: string; name: string } | null>(null)
   
   const rows = useMemo(() => {
     return customGPTs.map((g) => {
@@ -42,6 +45,11 @@ export function CustomGPTsGrid() {
   const handleDeleteGPT = (gpt: { id: string; name: string }) => {
     setGptToDelete(gpt)
     setShowDeleteModal(true)
+  }
+
+  const handleEmbedGPT = (gpt: { id: string; name: string }) => {
+    setGptToEmbed(gpt)
+    setShowEmbedModal(true)
   }
 
   const handleConfirmDelete = async () => {
@@ -139,7 +147,7 @@ export function CustomGPTsGrid() {
                             <Eye className="w-4 h-4 mr-2" />
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEmbedGPT(gpt)}>
                             <Code className="w-4 h-4 mr-2" />
                             Embed
                           </DropdownMenuItem>
@@ -225,6 +233,17 @@ export function CustomGPTsGrid() {
         description="Are you sure you want to delete this Custom GPT? This action cannot be undone and will remove all associated data including chat history."
         itemName={gptToDelete?.name || ""}
         itemType="custom GPT"
+      />
+
+      {/* Embed Modal */}
+      <EmbedModal
+        isOpen={showEmbedModal}
+        onClose={() => {
+          setShowEmbedModal(false)
+          setGptToEmbed(null)
+        }}
+        gptId={gptToEmbed?.id || ""}
+        gptName={gptToEmbed?.name || ""}
       />
     </div>
   )

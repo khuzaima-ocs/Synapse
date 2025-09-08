@@ -80,4 +80,13 @@ export interface CustomGPT {
   conversationStarters?: string[]
 }
 
+export interface Message {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  tool_calls?: any
+  tool_call_id?: string
+  created_at: string
+}
+
 

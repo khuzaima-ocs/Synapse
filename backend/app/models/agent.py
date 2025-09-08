@@ -26,3 +26,4 @@ class Agent(Base):
     tools = relationship("Tool", secondary="agent_tool_association", back_populates="agents")
     custom_gpts = relationship("CustomGPT", foreign_keys="CustomGPT.agent_id", back_populates="agent")
     default_custom_gpts = relationship("CustomGPT", foreign_keys="CustomGPT.default_agent_id")
+    messages = relationship("Message", back_populates="agent")

@@ -1,4 +1,4 @@
-import type { Agent, ApiKey, CustomGPT, Tool } from "@/lib/types"
+import type { Agent, ApiKey, CustomGPT, Tool, Message } from "@/lib/types"
 import { API_CONFIG } from "@/lib/config"
 
 const API_BASE_URL = API_CONFIG.BASE_URL
@@ -193,6 +193,11 @@ class ApiClient {
     await this.request<void>(`/custom-gpts/${id}`, {
       method: "DELETE",
     })
+  }
+
+  // Chat History
+  async getChatHistory(agentId: string, userId: string, limit: number = 50): Promise<Message[]> {
+    return this.request<Message[]>(`/chat/history/${agentId}/${userId}?limit=${limit}`)
   }
 }
 

@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Paperclip, Mic, Send, Copy, MoreVertical, Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { useData } from "@/lib/api-data-store"
 import { Badge } from "@/components/ui/badge"
+import { apiClient } from "@/lib/api-client"
+import type { Message } from "@/lib/types"
 
-export function CustomGPTChat({ gptId }: { gptId: string }) {
+export function CustomGPTChat({ gptId, isEmbedMode = false }: { gptId: string; isEmbedMode?: boolean }) {
   const [message, setMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [messages, setMessages] = useState<Array<{
     id: string
     type: 'agent' | 'user'
@@ -25,19 +28,95 @@ export function CustomGPTChat({ gptId }: { gptId: string }) {
   const gpt = useMemo(() => customGPTs.find((g) => g.id === gptId), [customGPTs, gptId])
   const agent = useMemo(() => agents.find((a) => a.id === gpt?.agentId), [agents, gpt?.agentId])
 
-  // Initialize messages with agent's starter message when gpt/agent changes
-  useEffect(() => {
-    if (agent && messages.length === 0) {
-      const starterMessage = {
-        id: '1',
-        type: 'agent' as const,
-        content: agent.starterMessage || "Hi! I'm your AI assistant. How can I help you today?",
-        timestamp: new Date()
-      }
-      setMessages([starterMessage])
-      previousMessagesLengthRef.current = 1
+  // Convert API message to component message format
+  const convertApiMessage = (apiMessage: Message) => ({
+    id: apiMessage.id,
+    type: apiMessage.role === 'assistant' ? 'agent' as const : 'user' as const,
+    content: apiMessage.content,
+    timestamp: new Date(apiMessage.created_at),
+    toolUsed: apiMessage.tool_calls ? 'Tool' : undefined
+  })
+
+  // Format response with markdown support
+  const formatResponse = (responseText: string) => {
+    // Escape < and > to prevent XSS
+    let safeText = responseText
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Convert markdown-style bold **text** → <strong>text</strong>
+    safeText = safeText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Handle ordered lists (numbered: 1., 2., etc.)
+    if (/\d+\.\s+/.test(safeText)) {
+      safeText = safeText.replace(/(\d+)\.\s+(.*?)(?=\n|$)/g, "<li>$2</li>");
+      safeText = safeText.replace(/(<li>[\s\S]*?<\/li>)/g, "<ol>$1</ol>");
     }
-  }, [agent, messages.length])
+
+    // Handle unordered lists (- or * at start of line)
+    if (/[-*]\s+/.test(safeText)) {
+      safeText = safeText.replace(/[-*]\s+(.*?)(?=\n|$)/g, "<li>$1</li>");
+      safeText = safeText.replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>");
+    }
+
+    // Convert plain newlines into <p>
+    safeText = safeText
+      .split(/\n+/)
+      .map(line => line.trim() ? `<p>${line}</p>` : "")
+      .join("");
+
+    // Wrap in a styled card
+    return safeText
+  }
+
+  // Fetch chat history when agent changes
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      if (!agent || !gpt) return
+      
+      setIsLoadingHistory(true)
+      try {
+        // Use a default user ID for now - in a real app, this would come from authentication
+        const userId = "khuzaima" // This should be dynamic based on logged-in user
+        const chatHistory = await apiClient.getChatHistory(agent.id, userId, 50)
+        
+        if (chatHistory && chatHistory.length > 0) {
+          // Convert and sort messages by timestamp
+          const convertedMessages = chatHistory
+            .map(convertApiMessage)
+            .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+          
+          setMessages(convertedMessages)
+          previousMessagesLengthRef.current = convertedMessages.length
+        } else {
+          // No chat history, show starter message
+          const starterMessage = {
+            id: '1',
+            type: 'agent' as const,
+            content: agent.starterMessage || "Hi! I'm your AI assistant. How can I help you today?",
+            timestamp: new Date()
+          }
+          setMessages([starterMessage])
+          previousMessagesLengthRef.current = 1
+        }
+      } catch (error) {
+        console.error('Failed to fetch chat history:', error)
+        // Fallback to starter message on error
+        const starterMessage = {
+          id: '1',
+          type: 'agent' as const,
+          content: agent.starterMessage || "Hi! I'm your AI assistant. How can I help you today?",
+          timestamp: new Date()
+        }
+        setMessages([starterMessage])
+        previousMessagesLengthRef.current = 1
+      } finally {
+        setIsLoadingHistory(false)
+      }
+    }
+
+    fetchChatHistory()
+  }, [agent, gpt])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -111,31 +190,107 @@ export function CustomGPTChat({ gptId }: { gptId: string }) {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-card">
+      <div className={`flex items-center justify-between border-b bg-card ${isEmbedMode ? 'p-3' : 'p-4'}`}>
         <div className="flex items-center gap-3">
           <div 
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+            className={`rounded-lg flex items-center justify-center text-lg ${isEmbedMode ? 'w-8 h-8' : 'w-10 h-10'}`}
             style={{ backgroundColor: `${gpt?.themeColor || "#2065D1"}20` }}
           >
             {gpt.icon || "🧩"}
           </div>
           <div>
-            <h2 className="font-semibold">{gpt.name}</h2>
-            <p className="text-sm text-muted-foreground">{gpt.description}</p>
+            <h2 className={`font-semibold ${isEmbedMode ? 'text-sm' : ''}`}>{gpt.name}</h2>
+            {!isEmbedMode && (
+              <p className="text-sm text-muted-foreground">{gpt.description}</p>
+            )}
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto chat-scroll">
-        <div className="p-6 space-y-6 min-h-full">
-          {messages.map((msg, index) => (
-            <div 
-              key={msg.id} 
-              className={isNewMessage(index) ? "animate-slide-in-from-bottom" : ""}
-              style={isNewMessage(index) ? { animationDelay: "0ms" } : {}}
-            >
-              {msg.type === 'agent' ? (
-                <div className="flex gap-4">
+        <div className={`space-y-6 min-h-full ${isEmbedMode ? 'p-4' : 'p-6'}`}>
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="text-2xl mb-2">⏳</div>
+                <p className="text-muted-foreground">Loading chat history...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg, index) => (
+                <div 
+                  key={msg.id} 
+                  className={isNewMessage(index) ? "animate-slide-in-from-bottom" : ""}
+                  style={isNewMessage(index) ? { animationDelay: "0ms" } : {}}
+                >
+                  {msg.type === 'agent' ? (
+                    <div className="flex gap-4">
+                      <Avatar className="w-10 h-10 flex-shrink-0 shadow-lg">
+                        <AvatarImage src={agent?.avatar || "/placeholder-user.png"} className="object-cover" />
+                        <AvatarFallback 
+                          className="text-white text-sm font-semibold"
+                          style={{ backgroundColor: gpt?.themeColor || "#2065D1" }}
+                        >
+                          {(agent?.name || "A").slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 max-w-[80%] space-y-2">
+                        <div 
+                          className="message-bubble border border-border/40 rounded-3xl rounded-tl-lg px-5 py-4 shadow-md backdrop-blur-sm"
+                          style={{
+                            background: `linear-gradient(to bottom right, ${gpt?.themeColor || "#2065D1"}03, ${gpt?.themeColor || "#2065D1"}08, var(--card))`
+                          }}
+                        >
+                      {msg.type === 'agent' ? (
+                        <div 
+                          className="text-sm text-foreground leading-relaxed font-medium"
+                          dangerouslySetInnerHTML={{ __html: formatResponse(msg.content) }}
+                        />
+                      ) : (
+                        <p className="text-sm text-foreground leading-relaxed font-medium">
+                          {msg.content}
+                        </p>
+                      )}
+                          
+                          {msg.toolUsed && (
+                            <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground bg-gradient-to-r from-emerald-50 to-emerald-50/50 dark:from-emerald-950/50 dark:to-emerald-950/30 backdrop-blur-sm rounded-xl px-4 py-3 border border-emerald-200/50 dark:border-emerald-800/50">
+                              <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-sm" />
+                              <span className="font-semibold text-emerald-700 dark:text-emerald-300">Used {msg.toolUsed}</span>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all ml-auto rounded-lg">
+                                <Copy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground/80 ml-3 font-medium">
+                          {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end">
+                      <div className="max-w-[80%] space-y-2">
+                        <div 
+                          className="message-bubble text-white rounded-3xl rounded-tr-lg px-5 py-4 shadow-md"
+                          style={{ backgroundColor: gpt?.themeColor || "#2065D1" }}
+                        >
+                          <p className="text-sm leading-relaxed font-medium">
+                            {msg.content}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground/80 mr-3 text-right font-medium">
+                          {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Typing Indicator */}
+              {isTyping && (
+                <div className="flex gap-4 animate-slide-in-from-bottom">
                   <Avatar className="w-10 h-10 flex-shrink-0 shadow-lg">
                     <AvatarImage src={agent?.avatar || "/placeholder-user.png"} className="object-cover" />
                     <AvatarFallback 
@@ -145,91 +300,35 @@ export function CustomGPTChat({ gptId }: { gptId: string }) {
                       {(agent?.name || "A").slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 max-w-[80%] space-y-2">
+                  <div className="flex-1 max-w-[80%]">
                     <div 
                       className="message-bubble border border-border/40 rounded-3xl rounded-tl-lg px-5 py-4 shadow-md backdrop-blur-sm"
                       style={{
                         background: `linear-gradient(to bottom right, ${gpt?.themeColor || "#2065D1"}03, ${gpt?.themeColor || "#2065D1"}08, var(--card))`
                       }}
                     >
-                      <p className="text-sm text-foreground leading-relaxed font-medium">
-                        {msg.content}
-                      </p>
-                      
-                      {msg.toolUsed && (
-                        <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground bg-gradient-to-r from-emerald-50 to-emerald-50/50 dark:from-emerald-950/50 dark:to-emerald-950/30 backdrop-blur-sm rounded-xl px-4 py-3 border border-emerald-200/50 dark:border-emerald-800/50">
-                          <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-sm" />
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">Used {msg.toolUsed}</span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all ml-auto rounded-lg">
-                            <Copy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                          </Button>
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1.5">
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full animate-bounce" 
+                            style={{ backgroundColor: gpt?.themeColor || "#2065D1", animationDelay: '0ms' }}
+                          />
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full animate-bounce" 
+                            style={{ backgroundColor: gpt?.themeColor || "#2065D1", animationDelay: '200ms' }}
+                          />
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full animate-bounce" 
+                            style={{ backgroundColor: gpt?.themeColor || "#2065D1", animationDelay: '400ms' }}
+                          />
                         </div>
-                      )}
+                        <span className="text-sm text-muted-foreground font-medium ml-1">AI is thinking...</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground/80 ml-3 font-medium">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-end">
-                  <div className="max-w-[80%] space-y-2">
-                    <div 
-                      className="message-bubble text-white rounded-3xl rounded-tr-lg px-5 py-4 shadow-md"
-                      style={{ backgroundColor: gpt?.themeColor || "#2065D1" }}
-                    >
-                      <p className="text-sm leading-relaxed font-medium">
-                        {msg.content}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground/80 mr-3 text-right font-medium">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
                   </div>
                 </div>
               )}
-            </div>
-          ))}
-          
-          {/* Typing Indicator */}
-          {isTyping && (
-            <div className="flex gap-4 animate-slide-in-from-bottom">
-              <Avatar className="w-10 h-10 flex-shrink-0 shadow-lg">
-                <AvatarImage src={agent?.avatar || "/placeholder-user.png"} className="object-cover" />
-                <AvatarFallback 
-                  className="text-white text-sm font-semibold"
-                  style={{ backgroundColor: gpt?.themeColor || "#2065D1" }}
-                >
-                  {(agent?.name || "A").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 max-w-[80%]">
-                <div 
-                  className="message-bubble border border-border/40 rounded-3xl rounded-tl-lg px-5 py-4 shadow-md backdrop-blur-sm"
-                  style={{
-                    background: `linear-gradient(to bottom right, ${gpt?.themeColor || "#2065D1"}03, ${gpt?.themeColor || "#2065D1"}08, var(--card))`
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1.5">
-                      <div 
-                        className="w-2.5 h-2.5 rounded-full animate-bounce" 
-                        style={{ backgroundColor: gpt?.themeColor || "#2065D1", animationDelay: '0ms' }}
-                      />
-                      <div 
-                        className="w-2.5 h-2.5 rounded-full animate-bounce" 
-                        style={{ backgroundColor: gpt?.themeColor || "#2065D1", animationDelay: '200ms' }}
-                      />
-                      <div 
-                        className="w-2.5 h-2.5 rounded-full animate-bounce" 
-                        style={{ backgroundColor: gpt?.themeColor || "#2065D1", animationDelay: '400ms' }}
-                      />
-                    </div>
-                    <span className="text-sm text-muted-foreground font-medium ml-1">AI is thinking...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </>
           )}
           
           <div ref={messagesEndRef} />
@@ -238,7 +337,7 @@ export function CustomGPTChat({ gptId }: { gptId: string }) {
 
       {/* Conversation Starters */}
       {gpt.conversationStarters && gpt.conversationStarters.length > 0 && (
-        <div className="px-6 py-3 border-t border-border/30 bg-muted/20">
+        <div className={`border-t border-border/30 bg-muted/20 ${isEmbedMode ? 'px-4 py-2' : 'px-6 py-3'}`}>
           <div className="flex flex-wrap gap-2">
             {gpt.conversationStarters.slice(0, 4).map((starter, index) => (
               <Button
@@ -257,7 +356,7 @@ export function CustomGPTChat({ gptId }: { gptId: string }) {
 
       {/* Chat Input */}
       <div 
-        className="relative p-6 border-t border-border/50 flex-shrink-0 backdrop-blur-sm"
+        className={`relative border-t border-border/50 flex-shrink-0 backdrop-blur-sm ${isEmbedMode ? 'p-4' : 'p-6'}`}
         style={{
           background: `linear-gradient(to right, var(--background), var(--background), ${gpt?.themeColor || "#2065D1"}05)`
         }}
