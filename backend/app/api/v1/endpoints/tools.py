@@ -29,6 +29,9 @@ def create_tool(
     tool_id = str(uuid.uuid4())
     tool_data = tool_in.dict()
     tool_data["id"] = tool_id
+
+    print(tool_in.openapiSchema)
+    print(tool_in.functionSchema)
     
     tool = tool_crud.create(db, obj_in=ToolCreate(**tool_data))
     return tool

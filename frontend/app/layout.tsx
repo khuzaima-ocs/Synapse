@@ -7,9 +7,12 @@ import { ApiDataProvider } from "@/lib/api-data-store"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "AI Agents Platform",
+  title: "Synapse",
   description: "Manage and deploy AI agents and tools",
   generator: "v0.app",
+  icons: {
+    icon: "/synapse-logo-light.png", 
+  },
 }
 
 export default function RootLayout({

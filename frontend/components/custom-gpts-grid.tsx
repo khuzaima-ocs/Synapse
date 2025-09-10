@@ -30,6 +30,7 @@ export function CustomGPTsGrid() {
         ...g,
         agentName: agent?.name || "",
         agentAvatar: agent?.avatar || "/placeholder-user.png",
+        messageCount: g.message_count || 0  // Add message count
       }
     })
   }, [customGPTs, agents])
@@ -102,8 +103,8 @@ export function CustomGPTsGrid() {
                 <TableRow key={gpt.id} className="hover:bg-muted/50">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center text-lg">
-                        {gpt.icon || "🧩"}
+                      <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center text-lg">
+                        <img src={"/synapse-logo-light.png"} alt={gpt.name} className="w-10 h-10 object-contain" />
                       </div>
                       <div>
                         <div 
@@ -117,7 +118,7 @@ export function CustomGPTsGrid() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{(gpt.chats || 0).toLocaleString()}</Badge>
+                    <Badge variant="secondary">{gpt.messageCount.toLocaleString()}</Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

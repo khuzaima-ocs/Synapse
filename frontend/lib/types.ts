@@ -58,6 +58,8 @@ export interface Tool {
   functionSchema?: FunctionSchema // New OpenAI function schema
   functionNames?: string[] // Array of function names for quick access
   assignedAgents?: string[] // Array of agent IDs using this tool
+  baseUrl?: string // Base URL for external tool service calls
+  secretCode?: string // Bearer token for authenticating tool calls
   createdAt?: number
   updatedAt?: number
 }
@@ -78,6 +80,7 @@ export interface CustomGPT {
   inputPlaceholder?: string
   chatHistory?: boolean
   conversationStarters?: string[]
+  message_count?: number;
 }
 
 export interface Message {

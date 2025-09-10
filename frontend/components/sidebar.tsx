@@ -1,9 +1,10 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Users, Wrench, MessageSquare, Blocks, Send, Puzzle, Code, BarChart3, Eye, GraduationCap } from "lucide-react"
+import { Users, Wrench, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useTheme } from "next-themes"
 
 const navigation = [
   {
@@ -29,7 +30,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed = false, width = 256, onWidthChange }: SidebarProps) {
   const pathname = usePathname()
-
+  const { theme } = useTheme()
   if (isCollapsed) {
     return null
   }
@@ -62,15 +63,15 @@ export function Sidebar({ isCollapsed = false, width = 256, onWidthChange }: Sid
 
       <div className="p-4">
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center">
-            <div
-              className="w-6 h-6 bg-yellow-500 rounded-sm"
-              style={{
-                clipPath: "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
-              }}
+        <div className="flex items-center gap-1 mb-8">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-transparent">
+            <img
+              src={theme === "dark" ? "/synapse-logo-light.png" : "/synapse-logo-dark.png"}
+              alt="Synapse Logo"
+              className="w-12 h-12 object-contain"
             />
           </div>
+          <h2 className="text-xl font-semibold" style={{ color: theme === "dark" ? "#fcd856" : "#4a2b1a" }}>Synapse</h2>
         </div>
 
         {/* Navigation */}

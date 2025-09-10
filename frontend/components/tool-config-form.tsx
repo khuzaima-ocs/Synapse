@@ -24,6 +24,8 @@ export function ToolConfigForm({ toolId }: ToolConfigFormProps) {
   const tool = useMemo(() => tools.find((t) => t.id === toolId), [tools, toolId])
   const [toolName, setToolName] = useState("")
   const [toolDescription, setToolDescription] = useState("")
+  const [baseUrl, setBaseUrl] = useState("")
+  const [secretCode, setSecretCode] = useState("")
   const [schema, setSchema] = useState("")
   const [functionSchema, setFunctionSchema] = useState<FunctionSchema | null>(null)
   const [allFunctionSchemas, setAllFunctionSchemas] = useState<FunctionSchema[]>([])
@@ -35,8 +37,11 @@ export function ToolConfigForm({ toolId }: ToolConfigFormProps) {
     if (!tool) return
     setToolName(tool.name)
     setToolDescription(tool.description)
+    setBaseUrl(tool.baseUrl || "")
+    setSecretCode((tool as any)?.secretCode || "")
     setSchema(tool.schema || "")
     setFunctionSchema(tool.functionSchema || null)
+    setSchema(JSON.stringify(tool.functionSchema, null, 2))
     
     // Handle function schemas and function names
     if (tool.functionSchema) {
@@ -175,6 +180,36 @@ export function ToolConfigForm({ toolId }: ToolConfigFormProps) {
                     onChange={(e) => setToolDescription(e.target.value)}
                     className="mt-1 min-h-[80px]"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="baseUrl" className="text-sm font-medium">
+                    Base URL
+                  </Label>
+                  <Input 
+                    id="baseUrl" 
+                    value={baseUrl} 
+                    onChange={(e) => setBaseUrl(e.target.value)} 
+                    className="mt-1"
+                    placeholder="e.g., http://localhost:8000"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    The base URL where your tool service is running
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="secretCode" className="text-sm font-medium">
+                    Secret Code
+                  </Label>
+                  <Input
+                    id="secretCode"
+                    value={secretCode}
+                    onChange={(e) => setSecretCode(e.target.value)}
+                    className="mt-1"
+                    placeholder="Bearer token used to authenticate tool calls"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This token will be sent as Authorization: Bearer when tools are invoked.
+                  </p>
                 </div>
               </div>
             </div>
@@ -365,6 +400,8 @@ export function ToolConfigForm({ toolId }: ToolConfigFormProps) {
               const toolData = {
                 name: toolName,
                 description: toolDescription,
+                baseUrl,
+                secretCode,
                 schema,
                 functionSchema: allFunctionSchemas.length === 1 ? allFunctionSchemas[0] : undefined,
                 functionNames: functionNames,

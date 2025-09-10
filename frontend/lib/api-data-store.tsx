@@ -243,6 +243,8 @@ export function ApiDataProvider({ children }: { children: React.ReactNode }) {
         functionSchema: partial?.functionSchema,
         functionNames: partial?.functionNames || [],
         assignedAgents: partial?.assignedAgents || [],
+        baseUrl: partial?.baseUrl || "",
+        secretCode: partial?.secretCode || ""
       }
       
       const newTool = await apiClient.createTool(toolData)

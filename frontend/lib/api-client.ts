@@ -199,6 +199,17 @@ class ApiClient {
   async getChatHistory(agentId: string, userId: string, limit: number = 50): Promise<Message[]> {
     return this.request<Message[]>(`/chat/history/${agentId}/${userId}?limit=${limit}`)
   }
+
+  async sendMessage(agentId: string, userId: string, messageContent: string): Promise<{ message_id: string, content: string, created_at: string }> {
+    return this.request<{ message_id: string, content: string, created_at: string }>('/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        agent_id: agentId,
+        user_id: userId,
+        message_content: messageContent
+      })
+    })
+  }
 }
 
 // Export singleton instance

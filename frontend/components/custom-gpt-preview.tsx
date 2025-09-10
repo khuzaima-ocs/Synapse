@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Paperclip, Mic, Send, Copy, MoreVertical, Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { useData } from "@/lib/api-data-store"
+import { apiClient } from "@/lib/api-client"
 
 interface CustomGPTPreviewProps {
   gptId: string
@@ -71,16 +72,56 @@ export function CustomGPTPreview({ gptId, formData }: CustomGPTPreviewProps) {
     )
   }
 
+  const [message, setMessage] = useState("")
+  const [messages, setMessages] = useState<any[]>([])
+  const [isTyping, setIsTyping] = useState(false)
+
+  const handleSendMessage = async () => {
+    if (message.trim()) {
+      const newMessage = {
+        id: Date.now().toString(),
+        type: 'user' as const,
+        content: message,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, newMessage])
+      setMessage("")
+      
+      if (!previewAgent) {
+        console.error('Agent is undefined')
+        return
+      }
+
+      // Send message to backend
+      try {
+        const agentResponse = await apiClient.sendMessage(previewAgent.id, "khuzaima", newMessage.content)
+        setMessages(prev => [...prev, {
+          id: agentResponse.message_id,
+          type: 'agent' as const,
+          content: agentResponse.content,
+          timestamp: new Date(agentResponse.created_at)
+        }])
+      } catch (error) {
+        console.error('Failed to send message:', error)
+      }
+      
+      // Simulate typing response
+      setIsTyping(true)
+      setTimeout(() => {
+        setIsTyping(false)
+      }, 1500)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-card">
         <div className="flex items-center gap-3">
           <div 
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-            style={{ backgroundColor: `${previewData.themeColor}20` }}
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-black"
           >
-            🧩
+            <img src={"/synapse-logo-light.png"} alt={previewData.name} className="w-10 h-10 object-contain" />
           </div>
           <div>
             <h2 className="font-semibold">{previewData.name}</h2>

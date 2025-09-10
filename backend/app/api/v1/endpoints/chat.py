@@ -1,16 +1,24 @@
-from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from openai import OpenAI
 import json
 
 from app.api.deps import get_db
-from app.crud import agent_crud, tool_crud, message_crud, api_key_crud
+from app.crud import agent_crud, message_crud, api_key_crud
 from app.schemas.message import ChatRequest, ChatResponse, MessageCreate
-from app.models.agent import Agent
-from app.models.tool import Tool
+from app.utils.tool_utils import call_external_tool
 
 router = APIRouter()
+
+# Define a maximum number of retries for tool execution
+MAX_RETRIES = 3
+
+# Initialize retry count dictionary
+retry_count = {}
+
+# Initialize tool_calls as an empty list
+validated_tools = []
+tool_calls = []
 
 #  response_model=ChatResponse
 @router.post("/",)
@@ -20,7 +28,6 @@ def chat_with_agent(
     chat_request: ChatRequest
 ):
     """Chat with an agent"""
-    
     # Get agent details
     agent = agent_crud.get(db, id=chat_request.agent_id)
     if not agent:
@@ -54,13 +61,13 @@ def chat_with_agent(
         }
         messages_history.insert(0, system_message)
     
-    # Add user message to history
+
     user_message = {
         "role": "user",
         "content": chat_request.message_content
     }
     messages_history.append(user_message)
-    
+
     # Save user message to database
     user_message_create = MessageCreate(
         agent_id=chat_request.agent_id,
@@ -68,78 +75,118 @@ def chat_with_agent(
         role="user",
         content=chat_request.message_content
     )
-    user_message_db = message_crud.create(db, obj_in=user_message_create)
+    message_crud.create(db, obj_in=user_message_create)
     
     # Get tools for the agent
     tools = []
+    tool_base_urls = {}  # Map tool names to their base URLs
+    tool_secret_codes = {}  # Map tool names to their secret codes
     if agent.tools:
         for tool in agent.tools:
-            if tool.functionSchema:
-                # functionSchema is a single function schema, add it to tools array
-                tools.append(tool.functionSchema)
-            elif tool.openapiSchema:
-                # openapiSchema might be a tools array or single function
-                try:
-                    # Parse the openapiSchema string as JSON
-                    parsed_schema = json.loads(tool.openapiSchema)
-                    
-                    # Check if it's a tools array format
-                    if isinstance(parsed_schema, dict) and "tools" in parsed_schema:
-                        # It's a tools array format, extract the tools
-                        tools.extend(parsed_schema["tools"])
-                    elif isinstance(parsed_schema, list):
-                        # It's already an array of tools
-                        tools.extend(parsed_schema)
-                    elif isinstance(parsed_schema, dict) and parsed_schema.get("type") == "function":
-                        # It's a single function schema
-                        tools.append(parsed_schema)
-                    else:
-                        # Unknown format, skip this tool
-                        continue
-                        
-                except json.JSONDecodeError:
-                    # If parsing fails, skip this tool
-                    continue
-    
+            try:
+                # Parse schema from openapiSchema or functionSchema
+                parsed_schema = None
+                parsed_schema = tool.functionSchema
+                if isinstance(parsed_schema, dict) and "tools" in parsed_schema:
+                    for schema_tool in parsed_schema["tools"]:
+                        tools.append(schema_tool)
+                        if schema_tool.get("type") == "function":
+                            tool_name = schema_tool["function"]["name"]
+                            tool_base_urls[tool_name] = tool.baseUrl
+                            tool_secret_codes[tool_name] = getattr(tool, "secretCode", None)
+                elif isinstance(parsed_schema, list):
+                    for schema_tool in parsed_schema:
+                        tools.append(schema_tool)
+                        if schema_tool.get("type") == "function":
+                            tool_name = schema_tool["function"]["name"]
+                            tool_base_urls[tool_name] = tool.baseUrl
+                            tool_secret_codes[tool_name] = getattr(tool, "secretCode", None)
+                elif isinstance(parsed_schema, dict) and parsed_schema.get("type") == "function":
+                    tools.append(parsed_schema)
+                    tool_name = parsed_schema["function"]["name"]
+                    tool_base_urls[tool_name] = tool.baseUrl
+                    tool_secret_codes[tool_name] = getattr(tool, "secretCode", None)
+            except (json.JSONDecodeError, KeyError):
+                continue
+
     try:
-        # Validate tools format before sending to OpenAI
-        validated_tools = []
-        for tool in tools:
-            if isinstance(tool, dict) and tool.get("type") == "function" and tool.get("function"):
-                validated_tools.append(tool)
-        
-        # Call OpenAI API
-        response = client.chat.completions.create(
-            model=agent.model,
-            messages=messages_history,
-            tools=validated_tools if validated_tools else None,
-            temperature=agent.temperature
-        )
-        
-        # Extract response content
-        assistant_message = response.choices[0].message
-        content = assistant_message.content or ""
-        tool_calls = assistant_message.tool_calls
-        
-        # Save assistant response to database
-        assistant_message_create = MessageCreate(
-            agent_id=chat_request.agent_id,
-            user_id=chat_request.user_id,
-            role="assistant",
-            content=content,
-            tool_calls=[tool_call.model_dump() for tool_call in tool_calls] if tool_calls else None
-        )
-        assistant_message_db = message_crud.create(db, obj_in=assistant_message_create)
-        
-        return ChatResponse(
-            message_id=assistant_message_db.id,
-            content=content,
-            role="assistant",
-            tool_calls=[tool_call.model_dump() for tool_call in tool_calls] if tool_calls else None,
-            created_at=assistant_message_db.created_at
-        )
+        while True:
+            # Call OpenAI API
+            response = client.chat.completions.create(
+                model=agent.model,
+                messages=messages_history,
+                tools=tools if tools else None,
+                temperature=agent.temperature
+            )
+
+            msg = response.choices[0].message
+
+            # Handle tool calls
+            if msg.tool_calls:
+                for tool_call in msg.tool_calls:
+                    tool_name = tool_call.function.name
+                    tool_args = json.loads(tool_call.function.arguments or "{}")
+                    tool_id = tool_call.id
+
+                    print(f"Tool call ({tool_id}): {tool_name}({tool_args})")
+
+                    retry_count.setdefault(tool_id, 0)
+
+                    try:
+                        # Get base URL for this tool
+                        base_url = tool_base_urls.get(tool_name)
+                        if not base_url:
+                            raise Exception(f"No base URL configured for tool: {tool_name}")
+                        
+                        # Call external tool service with Authorization header if secretCode is present
+                        secret_code = tool_secret_codes.get(tool_name)
+                        result = call_external_tool(base_url, tool_name, tool_args, secret_code)
+
+                        messages_history.append(msg)
+                        messages_history.append({
+                            "role": "tool",
+                            "tool_call_id": tool_id,
+                            "content": json.dumps(result)
+                        })
+
+                    except Exception as e:
+                        retry_count[tool_id] += 1
+
+                        if retry_count[tool_id] >= MAX_RETRIES:
+                            # After 3 retries, inform the user
+                            raise HTTPException(status_code=500, detail=f"⚠️ I tried 3 times to run `{tool_name}` but it kept failing. Last error: {str(e)}")
+
+                        # Send error back so model can retry with corrected args
+                        messages_history.append(msg)
+                        messages_history.append({
+                            "role": "tool",
+                            "tool_call_id": tool_id,
+                            "content": json.dumps({"error": str(e)})
+                        })
+
+            else:
+                # Natural language final response
+                content = msg.content or ""
+                assistant_message_create = MessageCreate(
+                    agent_id=chat_request.agent_id,
+                    user_id=chat_request.user_id,
+                    role="assistant",
+                    content=content,
+                    tool_calls=[tool_call.model_dump() for tool_call in tool_calls] if tool_calls else None
+                )
+                assistant_message_db = message_crud.create(db, obj_in=assistant_message_create)
+                
+                return ChatResponse(
+                    message_id=assistant_message_db.id,
+                    content=content,
+                    role="assistant",
+                    tool_calls=[tool_call.model_dump() for tool_call in tool_calls] if tool_calls else None,
+                    created_at=assistant_message_db.created_at
+                )
         
     except Exception as e:
+        import traceback
+        print(traceback.print_exc())
         raise HTTPException(status_code=500, detail=f"Error calling OpenAI API: {str(e)}")
 
 @router.get("/history/{agent_id}/{user_id}")

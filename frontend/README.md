@@ -1,4 +1,4 @@
-# AI Agents Platform Frontend
+# Synapse Frontend
 
 A modern, responsive web application built with Next.js for managing and deploying AI agents and tools. This platform provides an intuitive interface for creating, configuring, and managing custom AI agents with various capabilities.
 

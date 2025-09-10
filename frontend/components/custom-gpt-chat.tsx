@@ -126,7 +126,7 @@ export function CustomGPTChat({ gptId, isEmbedMode = false }: { gptId: string; i
     scrollToBottom()
   }, [messages])
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (message.trim()) {
       const newMessage = {
         id: Date.now().toString(),
@@ -137,19 +137,28 @@ export function CustomGPTChat({ gptId, isEmbedMode = false }: { gptId: string; i
       setMessages(prev => [...prev, newMessage])
       setMessage("")
       
+      if (!agent) {
+        console.error('Agent is undefined')
+        return
+      }
+
+      // Send message to backend
+      try {
+        const agentResponse = await apiClient.sendMessage(agent.id, "khuzaima", newMessage.content)
+        setMessages(prev => [...prev, {
+          id: agentResponse.message_id,
+          type: 'agent' as const,
+          content: agentResponse.content,
+          timestamp: new Date(agentResponse.created_at)
+        }])
+      } catch (error) {
+        console.error('Failed to send message:', error)
+      }
+      
       // Simulate typing response
       setIsTyping(true)
       setTimeout(() => {
         setIsTyping(false)
-        const agentResponse = {
-          id: (Date.now() + 1).toString(),
-          type: 'agent' as const,
-          content: agent?.roleInstructions ? 
-            `Based on my role as ${agent.name}, I'd be happy to help with that! Let me process your request.` :
-            'I\'d be happy to help with that! Let me process your request.',
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, agentResponse])
       }, 1500)
     }
   }
@@ -193,10 +202,9 @@ export function CustomGPTChat({ gptId, isEmbedMode = false }: { gptId: string; i
       <div className={`flex items-center justify-between border-b bg-card ${isEmbedMode ? 'p-3' : 'p-4'}`}>
         <div className="flex items-center gap-3">
           <div 
-            className={`rounded-lg flex items-center justify-center text-lg ${isEmbedMode ? 'w-8 h-8' : 'w-10 h-10'}`}
-            style={{ backgroundColor: `${gpt?.themeColor || "#2065D1"}20` }}
+            className={`rounded-lg flex items-center justify-center text-lg bg-black ${isEmbedMode ? 'w-8 h-8' : 'w-10 h-10'}`}
           >
-            {gpt.icon || "🧩"}
+            <img src={"/synapse-logo-light.png"} alt={gpt.name} className="w-10 h-10 object-contain" />
           </div>
           <div>
             <h2 className={`font-semibold ${isEmbedMode ? 'text-sm' : ''}`}>{gpt.name}</h2>

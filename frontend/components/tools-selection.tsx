@@ -11,6 +11,7 @@ import {
   Globe
 } from "lucide-react"
 import type { Tool } from "@/lib/types"
+import { useRouter } from "next/navigation"
 
 interface ToolsSelectionProps {
   agentId: string
@@ -19,6 +20,7 @@ interface ToolsSelectionProps {
 export function ToolsSelection({ agentId }: ToolsSelectionProps) {
   const { tools, agents, assignToolToAgent, unassignToolFromAgent } = useData()
   const [selectedTools, setSelectedTools] = useState<string[]>([])
+  const router = useRouter()
 
   const agent = useMemo(() => agents.find(a => a.id === agentId), [agents, agentId])
 
@@ -97,8 +99,8 @@ export function ToolsSelection({ agentId }: ToolsSelectionProps) {
           icon={Wrench}
           title="No tools available"
           description="No tools are currently available."
-          actionLabel=""
-          onAction={() => {}}
+          actionLabel="Create Your First Tool"
+          onAction={() => router.push('/tools/new/edit')}
         />
       )}
     </div>

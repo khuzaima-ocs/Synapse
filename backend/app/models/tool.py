@@ -16,6 +16,8 @@ class Tool(Base):
     functionSchema = Column(JSON)  # JSON object of OpenAI function schema
     functionNames = Column(ARRAY(String))  # Array of function names
     assignedAgents = Column(ARRAY(String))  # Array of agent IDs using this tool
+    baseUrl = Column(String)  # Base URL for external tool service calls
+    secretCode = Column(String)  # Bearer token for authenticating tool calls
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -119,7 +119,7 @@ export function AgentPreview({ agentId }: { agentId?: string }) {
     scrollToBottom()
   }, [messages])
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (message.trim()) {
       const newMessage = {
         id: Date.now().toString(),
@@ -130,19 +130,28 @@ export function AgentPreview({ agentId }: { agentId?: string }) {
       setMessages(prev => [...prev, newMessage])
       setMessage("")
       
+      if (!agent) {
+        console.error('Agent is undefined')
+        return
+      }
+
+      // Send message to backend
+      try {
+        const agentResponse = await apiClient.sendMessage(agent.id, "khuzaima", newMessage.content)
+        setMessages(prev => [...prev, {
+          id: agentResponse.message_id,
+          type: 'agent' as const,
+          content: agentResponse.content,
+          timestamp: new Date(agentResponse.created_at)
+        }])
+      } catch (error) {
+        console.error('Failed to send message:', error)
+      }
+      
       // Simulate typing response
       setIsTyping(true)
       setTimeout(() => {
         setIsTyping(false)
-        const agentResponse = {
-          id: (Date.now() + 1).toString(),
-          type: 'agent' as const,
-          content: agent?.roleInstructions ? 
-            `Based on my role as ${agent.name}, I'd be happy to help with that! Let me process your request.` :
-            'I\'d be happy to help with that! Let me process your request.',
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, agentResponse])
       }, 1500)
     }
   }

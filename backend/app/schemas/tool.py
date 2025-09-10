@@ -12,6 +12,8 @@ class ToolBase(BaseModel):
     functionSchema: Optional[Dict[str, Any]] = None  # OpenAI function schema as dict
     functionNames: Optional[List[str]] = None
     assignedAgents: Optional[List[str]] = None
+    baseUrl: Optional[str] = None  # Base URL for external tool service calls
+    secretCode: Optional[str] = None  # Bearer token for authenticating tool calls
 
 class ToolCreate(ToolBase):
     pass
@@ -26,6 +28,8 @@ class ToolUpdate(BaseModel):
     functionSchema: Optional[Dict[str, Any]] = None
     functionNames: Optional[List[str]] = None
     assignedAgents: Optional[List[str]] = None
+    baseUrl: Optional[str] = None
+    secretCode: Optional[str] = None
 
 class Tool(ToolBase):
     id: str
