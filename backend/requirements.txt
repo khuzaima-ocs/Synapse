@@ -8,3 +8,6 @@ python-dotenv==1.0.0
 alembic==1.13.1
 openai
 requests
+passlib[bcrypt]==1.7.4
+PyJWT==2.9.0
+twilio==9.8.0

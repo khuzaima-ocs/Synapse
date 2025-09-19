@@ -1,11 +1,21 @@
 "use client"
-
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { AgentsGrid } from "@/components/agents-grid"
 
 export default function AgentsPage() {
+  const router = useRouter()
+  const { isAuthenticated, isReady } = useAuth()
+  useEffect(() => {
+    if (!isReady) return
+    if (!isAuthenticated) router.replace("/login")
+  }, [router, isAuthenticated, isReady])
+  if (!isReady) return null
+  if (!isAuthenticated) return null
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(256)
 

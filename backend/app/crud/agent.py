@@ -6,10 +6,11 @@ from app.models.agent import Agent
 from app.schemas.agent import AgentCreate, AgentUpdate
 
 class CRUDAgent(CRUDBase[Agent, AgentCreate, AgentUpdate]):
-    def create(self, db: Session, *, obj_in: AgentCreate) -> Agent:
+    def create(self, db: Session, *, obj_in: AgentCreate, user_id: str) -> Agent:
         """Create a new agent with auto-generated ID"""
         obj_in_data = obj_in.model_dump()
         obj_in_data["id"] = str(uuid.uuid4())
+        obj_in_data["user_id"] = user_id
         db_obj = Agent(**obj_in_data)
         db.add(db_obj)
         db.commit()
@@ -36,21 +37,27 @@ class CRUDAgent(CRUDBase[Agent, AgentCreate, AgentUpdate]):
             "tools": [tool.id for tool in db_obj.tools] if db_obj.tools else []
         }
 
-    def get_by_name(self, db: Session, *, name: str) -> Optional[dict]:
-        agent = db.query(Agent).filter(Agent.name == name).first()
+    def get_by_name(self, db: Session, *, name: str, user_id: str) -> Optional[dict]:
+        agent = db.query(Agent).filter(Agent.name == name, Agent.user_id == user_id).first()
         return self._format_for_response(agent) if agent else None
 
-    def get_by_api_key(self, db: Session, *, api_key_id: str) -> List[dict]:
-        agents = db.query(Agent).filter(Agent.apiKeyId == api_key_id).all()
+    def get_by_api_key(self, db: Session, *, api_key_id: str, user_id: str) -> List[dict]:
+        agents = db.query(Agent).filter(Agent.apiKeyId == api_key_id, Agent.user_id == user_id).all()
         return [self._format_for_response(agent) for agent in agents]
 
-    def get(self, db: Session, id: str) -> Optional[Agent]:
+    def get(self, db: Session, id: str, user_id: Optional[str] = None) -> Optional[Agent]:
         """Get agent by ID as database object"""
-        return db.query(Agent).filter(Agent.id == id).first()
+        q = db.query(Agent).filter(Agent.id == id)
+        if user_id:
+            q = q.filter(Agent.user_id == user_id)
+        return q.first()
     
-    def get_formatted(self, db: Session, id: str) -> Optional[dict]:
+    def get_formatted(self, db: Session, id: str, user_id: Optional[str] = None) -> Optional[dict]:
         """Get agent by ID with formatted response"""
-        agent = db.query(Agent).filter(Agent.id == id).first()
+        q = db.query(Agent).filter(Agent.id == id)
+        if user_id:
+            q = q.filter(Agent.user_id == user_id)
+        agent = q.first()
         return self._format_for_response(agent) if agent else None
     
     def update(self, db: Session, *, db_obj: Agent, obj_in: AgentUpdate) -> dict:
@@ -59,9 +66,12 @@ class CRUDAgent(CRUDBase[Agent, AgentCreate, AgentUpdate]):
         updated_agent = super().update(db, db_obj=db_obj, obj_in=obj_in)
         return self._format_for_response(updated_agent)
 
-    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[dict]:
+    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100, user_id: Optional[str] = None) -> List[dict]:
         """Get multiple agents with formatted responses"""
-        agents = db.query(Agent).offset(skip).limit(limit).all()
+        q = db.query(Agent)
+        if user_id:
+            q = q.filter(Agent.user_id == user_id)
+        agents = q.offset(skip).limit(limit).all()
         return [self._format_for_response(agent) for agent in agents]
 
     def assign_tool(self, db: Session, *, agent_id: str, tool_id: str) -> dict:

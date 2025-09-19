@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from openai import OpenAI
 import json
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_user
 from app.crud import agent_crud, message_crud, api_key_crud
 from app.schemas.message import ChatRequest, ChatResponse, MessageCreate
 from app.utils.tool_utils import call_external_tool
@@ -25,11 +25,12 @@ tool_calls = []
 def chat_with_agent(
     *,
     db: Session = Depends(get_db),
-    chat_request: ChatRequest
+    chat_request: ChatRequest,
+    current_user = Depends(get_current_user)
 ):
     """Chat with an agent"""
     # Get agent details
-    agent = agent_crud.get(db, id=chat_request.agent_id)
+    agent = agent_crud.get(db, id=chat_request.agent_id, user_id=current_user.id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     
@@ -50,7 +51,7 @@ def chat_with_agent(
     messages_history = message_crud.get_chat_history(
         db, 
         agent_id=chat_request.agent_id, 
-        user_id=chat_request.user_id
+        user_id=current_user.id
     )
     
     # Add system message with agent instructions at the beginning
@@ -71,7 +72,7 @@ def chat_with_agent(
     # Save user message to database
     user_message_create = MessageCreate(
         agent_id=chat_request.agent_id,
-        user_id=chat_request.user_id,
+        user_id=current_user.id,
         role="user",
         content=chat_request.message_content
     )
@@ -169,7 +170,7 @@ def chat_with_agent(
                 content = msg.content or ""
                 assistant_message_create = MessageCreate(
                     agent_id=chat_request.agent_id,
-                    user_id=chat_request.user_id,
+                    user_id=current_user.id,
                     role="assistant",
                     content=content,
                     tool_calls=[tool_call.model_dump() for tool_call in tool_calls] if tool_calls else None
@@ -195,14 +196,18 @@ def get_chat_history(
     db: Session = Depends(get_db),
     agent_id: str,
     user_id: str,
+    current_user = Depends(get_current_user),
     limit: int = 50
 ):
     """Get chat history for a specific agent and user"""
     
     # Verify agent exists
-    agent = agent_crud.get(db, id=agent_id)
+    agent = agent_crud.get(db, id=agent_id, user_id=current_user.id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+    # Support alias 'me'
+    if user_id == "me":
+        user_id = current_user.id
     
     # Get chat history
     messages = message_crud.get_by_agent_and_user(

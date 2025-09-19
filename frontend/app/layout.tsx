@@ -4,6 +4,8 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ApiDataProvider } from "@/lib/api-data-store"
+import { AuthProvider } from "@/lib/auth"
+import { AuthGuard } from "@/components/auth-guard"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -24,9 +26,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
-          <ApiDataProvider>
-            {children}
-          </ApiDataProvider>
+          <AuthProvider>
+            <AuthGuard>
+              <ApiDataProvider>
+                {children}
+              </ApiDataProvider>
+            </AuthGuard>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

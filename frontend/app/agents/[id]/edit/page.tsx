@@ -1,6 +1,6 @@
 "use client"
-
 import { useState, useEffect, use } from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { AgentConfigForm } from "@/components/agent-config-form"
@@ -11,7 +11,19 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Eye, Settings, AlertCircle, Home, PanelLeftClose, PanelLeft } from "lucide-react"
 
+// Guard unauthenticated users
+function useAuthGuard() {
+  const router = useRouter()
+  const token = typeof window !== "undefined" ? localStorage.getItem("synapse_token") : null
+  useEffect(() => {
+    if (!token) router.replace("/login")
+  }, [router, token])
+}
+
+ 
+
 export default function EditAgentPage({ params }: { params: Promise<{ id: string }> }) {
+  useAuthGuard()
   const { id } = use(params)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(256)

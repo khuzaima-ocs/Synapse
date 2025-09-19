@@ -15,10 +15,11 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
-import { Upload, ChevronLeft, ChevronRight, Edit, Minus, Info, Bot, Zap, Settings, Palette, Brain, MessageCircle, Sliders, Upload as UploadIcon, User, FileText, Wrench } from "lucide-react"
+import { Upload, ChevronLeft, ChevronRight, Edit, Minus, Info, Bot, Zap, Settings, Palette, Brain, MessageCircle, Sliders, Upload as UploadIcon, User, FileText, Wrench, Smartphone } from "lucide-react"
 import { useData } from "@/lib/api-data-store"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ToolsSelection } from "./tools-selection"
+import { WhatsAppIntegrationsManager } from "./whatsapp-integrations-manager"
 
 interface AgentConfigFormProps {
   agentId: string
@@ -56,7 +57,7 @@ export function AgentConfigForm({ agentId }: AgentConfigFormProps) {
     <TooltipProvider>
       <div className="space-y-6">
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 sm:mb-8 h-auto">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 mb-6 sm:mb-8 h-auto">
             <TabsTrigger value="basic" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-3">
               <User className="w-4 h-4" />
               <span className="text-xs sm:text-sm">Basic</span>
@@ -72,6 +73,10 @@ export function AgentConfigForm({ agentId }: AgentConfigFormProps) {
             <TabsTrigger value="tools" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-3">
               <Wrench className="w-4 h-4" />
               <span className="text-xs sm:text-sm">Tools</span>
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-3">
+              <Smartphone className="w-4 h-4" />
+              <span className="text-xs sm:text-sm">Widgets</span>
             </TabsTrigger>
           </TabsList>
 
@@ -387,6 +392,27 @@ export function AgentConfigForm({ agentId }: AgentConfigFormProps) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <ToolsSelection agentId={agentId} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="integrations" className="space-y-6 mt-6">
+            {/* WhatsApp Integrations Card */}
+            <Card className="relative overflow-hidden border-0 shadow-md bg-gradient-to-br from-background to-green-50/30">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-12 translate-x-12" />
+              <CardHeader className="relative">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                    <Smartphone className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-xl">WhatsApp Integrations</CardTitle>
+                    <p className="text-sm text-muted-foreground">Connect this agent to WhatsApp for customer interactions</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <WhatsAppIntegrationsManager agentId={agentId} />
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,4 +1,4 @@
-import type { Agent, ApiKey, CustomGPT, Tool, Message } from "@/lib/types"
+import type { Agent, ApiKey, CustomGPT, Tool, Message, TokenResponse, User, WhatsAppIntegration, WhatsAppIntegrationCreate, WhatsAppIntegrationUpdate } from "@/lib/types"
 import { API_CONFIG } from "@/lib/config"
 
 const API_BASE_URL = API_CONFIG.BASE_URL
@@ -35,6 +35,14 @@ class ApiClient {
       ...options,
     }
 
+    // Attach bearer token if present (client-side only)
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("synapse_token")
+      if (token) {
+        ;(config.headers as Record<string, string>)["Authorization"] = `Bearer ${token}`
+      }
+    }
+
     try {
       const response = await fetch(url, config)
       
@@ -65,6 +73,21 @@ class ApiClient {
         0
       )
     }
+  }
+
+  // Auth
+  async register(data: { name: string; email: string; password: string; display_image?: string | null }): Promise<User> {
+    return this.request<User>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async login(data: { email: string; password: string }): Promise<TokenResponse> {
+    return this.request<TokenResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
   }
 
   // API Keys
@@ -196,18 +219,48 @@ class ApiClient {
   }
 
   // Chat History
-  async getChatHistory(agentId: string, userId: string, limit: number = 50): Promise<Message[]> {
-    return this.request<Message[]>(`/chat/history/${agentId}/${userId}?limit=${limit}`)
+  async getChatHistory(agentId: string, _userId?: string, limit: number = 50): Promise<Message[]> {
+    // userId is inferred from token by backend
+    return this.request<Message[]>(`/chat/history/${agentId}/me?limit=${limit}`)
   }
 
-  async sendMessage(agentId: string, userId: string, messageContent: string): Promise<{ message_id: string, content: string, created_at: string }> {
-    return this.request<{ message_id: string, content: string, created_at: string }>('/chat', {
+  async sendMessage(agentId: string, _userId: string, messageContent: string): Promise<{ message_id: string, content: string, created_at: string }> {
+    // userId is inferred from token by backend
+    return this.request<{ message_id: string, content: string, created_at: string }>("/chat", {
       method: 'POST',
       body: JSON.stringify({
         agent_id: agentId,
-        user_id: userId,
         message_content: messageContent
       })
+    })
+  }
+
+  // WhatsApp Integrations
+  async getWhatsAppIntegrations(): Promise<WhatsAppIntegration[]> {
+    return this.request<WhatsAppIntegration[]>("/integrations/whatsapp")
+  }
+
+  async getWhatsAppIntegrationsForAgent(agentId: string): Promise<WhatsAppIntegration[]> {
+    return this.request<WhatsAppIntegration[]>(`/integrations/whatsapp/agent/${agentId}`)
+  }
+
+  async createWhatsAppIntegration(data: WhatsAppIntegrationCreate): Promise<WhatsAppIntegration> {
+    return this.request<WhatsAppIntegration>("/integrations/whatsapp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateWhatsAppIntegration(id: string, data: WhatsAppIntegrationUpdate): Promise<WhatsAppIntegration> {
+    return this.request<WhatsAppIntegration>(`/integrations/whatsapp/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteWhatsAppIntegration(id: string): Promise<void> {
+    await this.request<void>(`/integrations/whatsapp/${id}`, {
+      method: "DELETE",
     })
   }
 }

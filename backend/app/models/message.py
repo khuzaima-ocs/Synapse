@@ -8,7 +8,7 @@ class Message(Base):
 
     id = Column(String, primary_key=True, index=True)
     agent_id = Column(String, ForeignKey("agents.id"), nullable=False)
-    user_id = Column(String, nullable=False)  # External user identifier
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     role = Column(String, nullable=False)  # "user", "assistant", "system", "tool"
     content = Column(Text, nullable=False)
     tool_calls = Column(JSON)  # Store tool calls as JSON
@@ -17,3 +17,4 @@ class Message(Base):
 
     # Relationship with agent
     agent = relationship("Agent", back_populates="messages")
+    user = relationship("User", back_populates="messages")

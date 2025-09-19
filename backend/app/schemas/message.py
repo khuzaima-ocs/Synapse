@@ -22,7 +22,6 @@ class Message(MessageBase):
 
 class ChatRequest(BaseModel):
     agent_id: str
-    user_id: str
     message_content: str
 
 class ChatResponse(BaseModel):

@@ -21,6 +21,7 @@ class CustomGPT(Base):
     input_placeholder = Column(String, default="What would you like to know?")
     chat_history = Column(Boolean, default=True)
     conversation_starters = Column(ARRAY(String))  # Array of conversation starter strings
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -28,3 +29,4 @@ class CustomGPT(Base):
     agent = relationship("Agent", foreign_keys=[agent_id], back_populates="custom_gpts")
     default_agent = relationship("Agent", foreign_keys=[default_agent_id], back_populates="default_custom_gpts")
     api_key = relationship("ApiKey", back_populates="custom_gpts")
+    owner = relationship("User", back_populates="custom_gpts")

@@ -1,5 +1,17 @@
 export type ProviderName = "openai" | "anthropic" | "azure-openai" | "other"
 
+export interface User {
+  id: string
+  name: string
+  email: string
+  display_image?: string | null
+}
+
+export interface TokenResponse {
+  access_token: string
+  token_type: string
+}
+
 export interface ApiKey {
   id: string
   name: string
@@ -90,6 +102,37 @@ export interface Message {
   tool_calls?: any
   tool_call_id?: string
   created_at: string
+}
+
+export interface WhatsAppIntegration {
+  id: string
+  user_id: string
+  agent_id: string
+  provider: string
+  path_token: string
+  enabled: boolean
+  twilio_auth_token?: string
+  twilio_account_sid?: string
+  twilio_phone_number?: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface WhatsAppIntegrationCreate {
+  agent_id: string
+  provider?: string
+  enabled?: boolean
+  twilio_auth_token?: string
+  twilio_account_sid?: string
+  twilio_phone_number?: string
+}
+
+export interface WhatsAppIntegrationUpdate {
+  provider?: string
+  enabled?: boolean
+  twilio_auth_token?: string
+  twilio_account_sid?: string
+  twilio_phone_number?: string
 }
 
 

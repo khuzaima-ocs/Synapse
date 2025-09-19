@@ -18,6 +18,7 @@ class Agent(Base):
     jsonResponse = Column(Boolean, default=False)
     starterMessage = Column(Text, default="Hi! I'm your AI assistant. How can I help you today?")
     apiKeyId = Column(String, ForeignKey("api_keys.id"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -27,3 +28,4 @@ class Agent(Base):
     custom_gpts = relationship("CustomGPT", foreign_keys="CustomGPT.agent_id", back_populates="agent")
     default_custom_gpts = relationship("CustomGPT", foreign_keys="CustomGPT.default_agent_id")
     messages = relationship("Message", back_populates="agent")
+    owner = relationship("User", back_populates="agents")

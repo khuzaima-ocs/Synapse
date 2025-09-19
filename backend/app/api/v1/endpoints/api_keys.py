@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_user
 from app.crud import api_key_crud
 from app.schemas.api_key import ApiKey, ApiKeyCreate, ApiKeyUpdate
 import uuid
@@ -12,17 +12,20 @@ router = APIRouter()
 def read_api_keys(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Get all API keys"""
     api_keys = api_key_crud.get_multi(db, skip=skip, limit=limit)
+    api_keys = [k for k in api_keys if getattr(k, 'user_id', None) == current_user.id] if api_keys else []
     return api_keys
 
 @router.post("/", response_model=ApiKey)
 def create_api_key(
     *,
     db: Session = Depends(get_db),
-    api_key_in: ApiKeyCreate
+    api_key_in: ApiKeyCreate,
+    current_user = Depends(get_current_user)
 ):
     """Create new API key"""
     # Generate UUID for the API key
@@ -30,18 +33,19 @@ def create_api_key(
     api_key_data = api_key_in.dict()
     api_key_data["id"] = api_key_id
     
-    api_key = api_key_crud.create(db, obj_in=ApiKeyCreate(**api_key_data))
+    api_key = api_key_crud.create(db, obj_in=ApiKeyCreate(**api_key_data), user_id=current_user.id)
     return api_key
 
 @router.get("/{api_key_id}", response_model=ApiKey)
 def read_api_key(
     *,
     db: Session = Depends(get_db),
-    api_key_id: str
+    api_key_id: str,
+    current_user = Depends(get_current_user)
 ):
     """Get API key by ID"""
     api_key = api_key_crud.get(db, id=api_key_id)
-    if not api_key:
+    if not api_key or getattr(api_key, 'user_id', None) != current_user.id:
         raise HTTPException(status_code=404, detail="API key not found")
     return api_key
 
@@ -50,11 +54,12 @@ def update_api_key(
     *,
     db: Session = Depends(get_db),
     api_key_id: str,
-    api_key_in: ApiKeyUpdate
+    api_key_in: ApiKeyUpdate,
+    current_user = Depends(get_current_user)
 ):
     """Update API key"""
     api_key = api_key_crud.get(db, id=api_key_id)
-    if not api_key:
+    if not api_key or getattr(api_key, 'user_id', None) != current_user.id:
         raise HTTPException(status_code=404, detail="API key not found")
     
     api_key = api_key_crud.update(db, db_obj=api_key, obj_in=api_key_in)
@@ -64,11 +69,12 @@ def update_api_key(
 def delete_api_key(
     *,
     db: Session = Depends(get_db),
-    api_key_id: str
+    api_key_id: str,
+    current_user = Depends(get_current_user)
 ):
     """Delete API key"""
     api_key = api_key_crud.get(db, id=api_key_id)
-    if not api_key:
+    if not api_key or getattr(api_key, 'user_id', None) != current_user.id:
         raise HTTPException(status_code=404, detail="API key not found")
     
     api_key = api_key_crud.remove(db, id=api_key_id)

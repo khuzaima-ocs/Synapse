@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { useAuth } from "@/lib/auth"
 import type { Agent, ApiKey, CustomGPT, Tool } from "@/lib/types"
 import { apiClient, ApiError } from "@/lib/api-client"
 
@@ -172,13 +173,15 @@ export function ApiDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Initial data fetch
+  // Initial data fetch only when authenticated
+  const { isAuthenticated, isReady } = useAuth()
   useEffect(() => {
+    if (!isReady || !isAuthenticated) return
     fetchAgents()
     fetchTools()
     fetchApiKeys()
     fetchCustomGPTs()
-  }, [fetchAgents, fetchTools, fetchApiKeys, fetchCustomGPTs])
+  }, [isReady, isAuthenticated, fetchAgents, fetchTools, fetchApiKeys, fetchCustomGPTs])
 
   // Agent operations
   const addAgent = useCallback(async (partial?: Partial<Agent>): Promise<string | null> => {

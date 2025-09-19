@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Users, Wrench, MessageSquare } from "lucide-react"
+import { Users, Wrench, MessageSquare, Smartphone } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -18,6 +18,12 @@ const navigation = [
     title: "2. DEPLOY",
     items: [
       { name: "Custom GPTs", icon: MessageSquare, href: "/custom-gpts" },
+    ],
+  },
+  {
+    title: "3. WIDGETS",
+    items: [
+      { name: "WhatsApp", icon: Smartphone, href: "/widgets/whatsapp" },
     ],
   },
 ]
@@ -87,7 +93,8 @@ export function Sidebar({ isCollapsed = false, width = 256, onWidthChange }: Sid
                     pathname === item.href ||
                     (item.href === "/" && pathname.startsWith("/agents")) ||
                     (item.href === "/tools" && pathname.startsWith("/tools")) ||
-                    (item.href === "/custom-gpts" && pathname.startsWith("/custom-gpts"))
+                    (item.href === "/custom-gpts" && pathname.startsWith("/custom-gpts")) ||
+                    (item.href === "/widgets/whatsapp" && pathname.startsWith("/widgets/whatsapp"))
 
                   return (
                     <li key={item.name}>

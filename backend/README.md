@@ -10,6 +10,7 @@ FastAPI backend for the Synapse AI Platform with PostgreSQL database integration
 - **Custom GPTs**: Custom GPT applications with appearance and behavior settings
 - **CRUD Operations**: Full Create, Read, Update, Delete operations for all entities
 - **PostgreSQL Integration**: Robust database storage with SQLAlchemy ORM
+ - **Users & Auth**: JWT-based authentication, per-user data scoping (agents, tools, API keys, custom GPTs, messages)
 
 ## Quick Start
 
@@ -41,25 +42,37 @@ ENVIRONMENT=development
 python init_db.py
 ```
 
-### 4. Initialize Database
-
-```bash
-python init_db.py
-```
-
-### 5. (Optional) Seed with Sample Data
-
-```bash
-python seed_data.py
-```
-
-### 6. Start the Server
+### 4. Start the Server
 
 ```bash
 python start.py
 ```
 
 The API will be available at `http://localhost:8000`
+
+### Auth Flow
+
+1. Register a user
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Me","email":"me@example.com","password":"secret","display_image":"/me.png"}'
+```
+
+2. Login to get a token
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"me@example.com","password":"secret"}'
+```
+
+3. Use the token
+
+```bash
+curl -H "Authorization: Bearer <token>" http://localhost:8000/api/v1/agents
+```
 
 ## API Documentation
 
@@ -69,16 +82,19 @@ Once the server is running, you can access:
 - **ReDoc Documentation**: `http://localhost:8000/redoc`
 
 ## API Endpoints
+### Auth
+- `POST /api/v1/auth/register` - Create a new user
+- `POST /api/v1/auth/login` - Login and receive JWT
 
 ### Agents
-- `GET /api/v1/agents/` - List all agents
+- `GET /api/v1/agents/` - List your agents
 - `POST /api/v1/agents/` - Create new agent
 - `GET /api/v1/agents/{agent_id}` - Get agent by ID
 - `PUT /api/v1/agents/{agent_id}` - Update agent
 - `DELETE /api/v1/agents/{agent_id}` - Delete agent
 
 ### Tools
-- `GET /api/v1/tools/` - List all tools
+- `GET /api/v1/tools/` - List your tools
 - `POST /api/v1/tools/` - Create new tool
 - `GET /api/v1/tools/{tool_id}` - Get tool by ID
 - `PUT /api/v1/tools/{tool_id}` - Update tool
@@ -87,14 +103,14 @@ Once the server is running, you can access:
 - `DELETE /api/v1/tools/{tool_id}/unassign/{agent_id}` - Unassign tool from agent
 
 ### API Keys
-- `GET /api/v1/api-keys/` - List all API keys
+- `GET /api/v1/api-keys/` - List your API keys
 - `POST /api/v1/api-keys/` - Create new API key
 - `GET /api/v1/api-keys/{api_key_id}` - Get API key by ID
 - `PUT /api/v1/api-keys/{api_key_id}` - Update API key
 - `DELETE /api/v1/api-keys/{api_key_id}` - Delete API key
 
 ### Custom GPTs
-- `GET /api/v1/custom-gpts/` - List all custom GPTs
+- `GET /api/v1/custom-gpts/` - List your custom GPTs
 - `POST /api/v1/custom-gpts/` - Create new custom GPT
 - `GET /api/v1/custom-gpts/{custom_gpt_id}` - Get custom GPT by ID
 - `PUT /api/v1/custom-gpts/{custom_gpt_id}` - Update custom GPT
@@ -109,6 +125,8 @@ The application uses the following main entities:
 - **api_keys**: API keys for different providers
 - **custom_gpts**: Custom GPT applications with themes and settings
 - **agent_tool_association**: Many-to-many relationship between agents and tools
+- **users**: Registered users with name, email, password hash, display image
+- All above entities include `user_id` referencing `users.id` (except associations)
 
 ## Testing
 
@@ -181,6 +199,11 @@ backend/
 - `DATABASE_URL`: PostgreSQL connection string
 - `SECRET_KEY`: Secret key for the application
 - `ENVIRONMENT`: Environment (development/production)
+
+## Notes / Migrations
+
+- New tables/columns introduced: `users` and `user_id` on agents/tools/api_keys/custom_gpts/messages.
+- If you had pre-existing data, recreate tables or run a migration.
 
 ## CORS Configuration
 
